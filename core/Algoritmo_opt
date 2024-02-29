@@ -1,0 +1,139 @@
+import time
+import random
+from statistics import mean
+import signal
+
+import requests
+import openpyxl
+
+
+def handler(signum, frame):
+    endTimes = time.time() - start_time
+    print(endTimes)
+    meanBook.save('../processed/myMeanBook.xlsx')
+    minimumBook.save('../processed/myMinimumBook.xlsx')
+    exit(1)
+
+
+signal.signal(signal.SIGINT, handler)
+start_time = time.time()
+n = 1000  # number of individuals per generation
+m = 7  # number of tournament competitors
+pepper = 4  # percentage of mutation
+meanBook = openpyxl.load_workbook('../processed/myMeanBookl.xlsx')
+minimumBook = openpyxl.load_workbook('../processed/myMinBookl.xlsx')
+basic = "n " + str(n) + " m " + str(m) + " p " + str(pepper) + " **"
+meSheet = meanBook['pruebas']
+miSheet = minimumBook['pruebas']
+column = meSheet.max_column + 1
+c1 = meSheet.cell(row=1, column=column)
+c2 = miSheet.cell(row=1, column=column)
+c1.value = "n=" + str(n) + " m=" + str(m) + " p=" + str(pepper)
+c2.value = "n=" + str(n) + " m=" + str(m) + " p=" + str(pepper)
+row = 2
+
+website = "NOT DEFINED"
+myChromosomes = []
+myFitness = []
+
+
+def firstGen():
+    for c in range(0, n):
+        myChromosomes.append(list('000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'))
+        myFitness.append(0)
+        cr = myChromosomes[c]
+        for y in range(0, 384):
+            gen = random.randrange(3)
+            if gen == 0:
+                cr[y] = '0'
+            elif gen == 1:
+                cr[y] = 'F'
+            else:
+                cr[y] = 'H'
+        print(cr)
+
+
+def evaluation(chromosomes):
+    for c in range(0, n):
+        sndcr = "".join(chromosomes[c])
+        req = requests.get(website + sndcr)
+        myFitness[c] = float(req.text)
+    meann = round(mean(myFitness), 2)
+    print(meann)
+    meann = str(meann)
+    c1.value = meann
+
+
+def selection():
+    myNewGen = []
+    for c in range(0, n):
+        myList = []
+        myTournament = []
+        for a in range(0, m):
+            tmp = random.randrange(n)
+            myTournament.append(float(myFitness[tmp]))
+            myList.append(tmp)
+        myWinner = myFitness.index(min(myTournament))
+        myNewGen.append(list(myChromosomes[myWinner]))
+
+    return link(myNewGen)
+
+
+def link(myNewGen):
+    for a in range(0, int(n / 2)):
+        cr1 = myNewGen[a]
+        cr2 = myNewGen[a*2]
+        gen = random.randrange(384)
+        for p in range(0, gen):
+            if cr1[p] == '0' and cr2[p] == 'H':
+                cr1[p] = 'H'
+                cr2[p] = '0'
+            elif cr1[p] == '0' and cr2[p] == 'F':
+                cr1[p] = 'F'
+                cr2[p] = '0'
+            elif cr1[p] == 'H' and cr2[p] == '0':
+                cr1[p] = '0'
+                cr2[p] = 'H'
+            elif cr1[p] == 'F' and cr2[p] == '0':
+                cr1[p] = '0'
+                cr2[p] = 'F'
+            elif cr1[p] == 'H' and cr2[p] == 'F':
+                cr1[p] = 'F'
+                cr2[p] = 'H'
+            elif cr1[p] == 'F' and cr2[p] == 'H':
+                cr1[p] = 'H'
+                cr2[p] = 'F'
+    return mutation(myNewGen)
+
+
+def mutation(myNewGen):
+    for c in myNewGen:
+        for p in range(0, 384):
+            gen = random.randrange(100)
+            if 50 - (pepper / 2) < gen < 50 + (pepper / 2):
+                gen = random.randrange(3)
+                if gen == 0:
+                    c[p] = '1'
+                elif gen == 1:
+                    c[p] = 'F'
+                else:
+                    c[p] = 'H'
+    return myNewGen
+
+
+firstGen()
+minimum = 10000000
+while minimum != 0.0:
+    c1 = meSheet.cell(row=row, column=column)
+    c2 = miSheet.cell(row=row, column=column)
+    evaluation(myChromosomes)
+    minimum = min(myFitness)
+    print(minimum)
+    minium = str(minimum) + "\n"
+    c2.value = minimum
+    row = row + 1
+    myChromosomes = selection()
+times = time.time() - start_time
+print(times)
+meanBook.save('../processed/myMeanBook.xlsx')
+minimumBook.save('../processed/myMinimumBook.xlsx')
